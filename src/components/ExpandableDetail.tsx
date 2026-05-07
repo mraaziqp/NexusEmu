@@ -1,11 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Game } from '../types';
-import {
-  X, Play, Clock, Trophy, Calendar, Users, Star, Info,
-  Smartphone, Monitor, Gamepad, BookOpen, Database,
-  Download, Loader2, AlertCircle, RefreshCw, Share2,
-} from 'lucide-react';
+import { X, Play, Clock, Trophy, Calendar, Users, Star, Info, Cloud, Smartphone, Monitor, Gamepad, Share2, BookOpen, Database } from 'lucide-react';
 import { AIGameGuide } from './AIGameGuide';
 
 interface ExpandableDetailProps {
@@ -14,62 +10,8 @@ interface ExpandableDetailProps {
   onLaunch: (game: Game) => void;
 }
 
-const isMobileDevice = typeof navigator !== 'undefined' && /Android|webOS|iPhone|iPad|iPod|BlackBerry/i.test(navigator.userAgent);
-
 export const ExpandableDetail: React.FC<ExpandableDetailProps> = ({ game, onClose, onLaunch }) => {
-  const [activeTab, setActiveTab]   = useState('overview');
-  const [launching, setLaunching]   = useState(false);
-  const [launchErr, setLaunchErr]   = useState<string | null>(null);
-  const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
-
-  const handlePlay = async () => {
-    if (!game) return;
-    setLaunching(true);
-    setLaunchErr(null);
-    try {
-      const res = await fetch('/api/games/launch', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ game_id: game.id }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setLaunchErr(data.error ?? 'Launch failed');
-        return;
-      }
-      onLaunch(game);
-    } catch {
-      setLaunchErr('Could not reach server');
-    } finally {
-      setLaunching(false);
-    }
-  };
-
-  const handleAutoFixCore = async () => {
-    if (!game) return;
-    setLaunchErr(null);
-    setLaunching(true);
-    try {
-      const r = await fetch('/api/emulator/cores/download', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ platform: game.platform }),
-      });
-      const d = await r.json();
-      if (!r.ok) { setLaunchErr('Core download failed: ' + (d.error ?? '')); return; }
-      setLaunchErr(null);
-      // Retry launch
-      await handlePlay();
-    } catch {
-      setLaunchErr('Core download failed');
-    } finally {
-      setLaunching(false);
-    }
-  };
-
-  const isMissingCore = launchErr?.toLowerCase().includes('core');
-  const isMissingEmulator = launchErr?.toLowerCase().includes('emulator') || launchErr?.toLowerCase().includes('retroarch');
-
+  const [activeTab, setActiveTab] = useState('overview');
 
   return (
     <AnimatePresence>
@@ -85,10 +27,7 @@ export const ExpandableDetail: React.FC<ExpandableDetailProps> = ({ game, onClos
           />
 
           <motion.div
-            initial={{ opacity: 0, scale: 0.97, y: 16 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.97, y: 16 }}
-            transition={{ type: 'spring', damping: 28, stiffness: 280 }}
+            layoutId={`card-${game.id}`}
             className="w-full max-w-6xl h-full max-h-[85vh] bg-nexus-surface rounded-3xl overflow-hidden relative flex flex-col md:flex-row shadow-[0_0_100px_rgba(0,0,0,0.5)] border border-white/10"
           >
             {/* Background Image Hero */}
@@ -110,90 +49,35 @@ export const ExpandableDetail: React.FC<ExpandableDetailProps> = ({ game, onClos
               transition={{ type: 'spring', damping: 20, stiffness: 100 }}
               className="relative z-10 w-full md:w-[380px] p-8 flex flex-col glass-panel border-y-0 border-l-0"
             >
-              <img
-                src={game.boxArt ?? undefined}
+              <motion.img
+                layoutId={`image-${game.id}`}
+                src={game.boxArt}
                 alt={game.title}
                 className="w-full rounded-2xl shadow-2xl mb-8 border border-white/10"
               />
               
               <div className="space-y-6">
                 <div className="space-y-3">
-                  {/* Play / Download button */}
-                  {isMobileDevice ? (
-                    <a
-                      href={`/api/games/${game.id}/download`}
-                      download
-                      className="w-full py-4 bg-purple-500 hover:bg-purple-400 rounded-xl font-bold flex items-center justify-center gap-3 transition-all hover:scale-[1.02] active:scale-[0.98] shadow-lg"
-                    >
-                      <Download className="w-5 h-5" />
-                      DOWNLOAD ROM
-                    </a>
-                  ) : (
-                    <motion.button
-                      animate={!launching && !launchErr ? {
-                        boxShadow: ['0 0 0px rgba(59,130,246,0)', '0 0 20px rgba(59,130,246,0.4)', '0 0 0px rgba(59,130,246,0)']
-                      } : {}}
-                      transition={{ repeat: Infinity, duration: 2 }}
-                      onClick={handlePlay}
-                      disabled={launching}
-                      className="w-full py-4 bg-nexus-accent hover:bg-nexus-accent/90 rounded-xl font-bold flex items-center justify-center gap-3 transition-transform hover:scale-[1.02] active:scale-[0.98] shadow-lg disabled:opacity-60"
-                    >
-                      {launching
-                        ? <Loader2 className="w-5 h-5 animate-spin" />
-                        : <Play className="fill-current w-5 h-5 ml-1" />
-                      }
-                      {launching ? 'LAUNCHING…' : 'PLAY NOW'}
-                    </motion.button>
-                  )}
-
-                  {/* Launch error */}
-                  {launchErr && (
-                    <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl space-y-2">
-                      <div className="flex items-start gap-2">
-                        <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
-                        <p className="text-xs text-red-300 leading-snug">{launchErr}</p>
-                      </div>
-                      {isMissingCore && (
-                        <button
-                          onClick={handleAutoFixCore}
-                          disabled={launching}
-                          className="w-full py-2 bg-nexus-accent/10 border border-nexus-accent/30 rounded-lg text-xs font-bold text-nexus-accent hover:bg-nexus-accent/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-                        >
-                          {launching ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
-                          Download Core Automatically
-                        </button>
-                      )}
-                      {isMissingEmulator && (
-                        <p className="text-[10px] text-nexus-muted">
-                          Go to <span className="text-white font-semibold">Settings → Emulator Setup</span> and click Auto-Detect, or set <code>EMULATOR_PATH</code> in .env
-                        </p>
-                      )}
-                      <button onClick={() => setLaunchErr(null)} className="w-full py-1.5 text-[10px] text-nexus-muted hover:text-white transition-colors flex items-center justify-center gap-1">
-                        <RefreshCw className="w-3 h-3" /> Retry
-                      </button>
-                    </div>
-                  )}
-
-                  {/* Mobile: show compatible emulators */}
-                  {isMobileDevice && (
-                    <div className="p-3 bg-white/5 rounded-xl border border-white/10 space-y-1">
-                      <p className="text-[9px] font-black uppercase tracking-widest text-nexus-muted">Open with</p>
-                      <p className="text-xs text-white/70">
-                        {/iOS|iPhone|iPad/.test(navigator.userAgent)
-                          ? 'Delta · Provenance · RetroArch Mobile'
-                          : 'RetroArch · Lemuroid · GameDroid'
-                        }
-                      </p>
-                    </div>
-                  )}
-                  {/* Controller info */}
+                  <motion.button 
+                    animate={{ 
+                      boxShadow: ['0 0 0px rgba(59, 130, 246, 0)', '0 0 20px rgba(59, 130, 246, 0.4)', '0 0 0px rgba(59, 130, 246, 0)']
+                    }}
+                    transition={{ repeat: Infinity, duration: 2 }}
+                    onClick={() => onLaunch(game)}
+                    className="w-full py-4 bg-nexus-accent hover:bg-nexus-accent/90 rounded-xl font-bold flex items-center justify-center gap-3 transition-transform hover:scale-[1.02] active:scale-[0.98] shadow-lg"
+                  >
+                    <Play className="fill-current w-5 h-5 ml-1" />
+                    PLAY NOW
+                  </motion.button>
+                  
+                  {/* Controller Profile Badge */}
                   <div className="flex items-center gap-3 p-3 bg-white/5 rounded-xl border border-white/10">
                     <div className="bg-nexus-accent/20 p-2 rounded-lg">
                       <Gamepad className="w-4 h-4 text-nexus-accent" />
                     </div>
                     <div>
-                      <p className="text-[10px] font-black tracking-widest text-nexus-muted uppercase">Core</p>
-                      <p className="text-xs font-bold text-white/90 capitalize">{game.platform}</p>
+                      <p className="text-[10px] font-black tracking-widest text-nexus-muted uppercase">Controller Profile</p>
+                      <p className="text-xs font-bold text-white/90">Xbox Core Controller <span className="text-green-500 text-[10px] ml-1">• Auto-Mapped</span></p>
                     </div>
                   </div>
                 </div>
@@ -366,21 +250,16 @@ export const ExpandableDetail: React.FC<ExpandableDetailProps> = ({ game, onClos
 
                         <div className="p-6 bg-nexus-accent/10 rounded-2xl border border-nexus-accent/20 h-fit">
                           <h4 className="text-xs font-bold mb-4 flex items-center gap-2 text-nexus-accent">
-                             <Monitor className="w-4 h-4" />
-                             Sync Status
+                             <Cloud className="w-4 h-4" />
+                             AWS Delta-Sync
                           </h4>
                           <div className="space-y-2">
                             <p className="text-[10px] leading-snug text-nexus-muted">
-                              {game.syncStatus === 'synced'
-                                ? 'Game data is synced to Neon PostgreSQL. Playtime and metadata are preserved across devices.'
-                                : 'Sync pending — will upload on next connection.'
-                              }
+                              Latest .SRM hash verified. Secure channel active. Your progress is synced to 'Global_Cluster_01'.
                             </p>
                             <div className="pt-4 flex items-center gap-2">
-                              <div className={`animate-pulse w-2 h-2 rounded-full ${game.syncStatus === 'synced' ? 'bg-green-500' : 'bg-yellow-500'}`} />
-                              <span className="text-[10px] font-mono uppercase tracking-widest">
-                                {game.syncStatus === 'synced' ? 'SYNCED' : 'PENDING'}
-                              </span>
+                              <div className="animate-pulse w-2 h-2 rounded-full bg-green-500" />
+                              <span className="text-[10px] font-mono uppercase tracking-widest">STATE: CONSISTENT</span>
                             </div>
                           </div>
                         </div>
@@ -410,28 +289,20 @@ export const ExpandableDetail: React.FC<ExpandableDetailProps> = ({ game, onClos
                     >
                        <div className="p-6 bg-white/5 rounded-2xl border border-white/5 font-mono text-[10px] space-y-4">
                           <div className="flex justify-between border-b border-white/5 pb-2">
-                             <span className="text-nexus-muted uppercase">Platform</span>
-                             <span className="text-white uppercase">{game.platform}</span>
+                             <span className="text-nexus-muted uppercase">SHA256_HASH</span>
+                             <span className="text-white break-all text-right max-w-[200px]">8F1A2C3D4E5F6G7H8I9J0K1L2M3N4O5P6Q7R8S9T0U1V2W3X4Y5Z</span>
                           </div>
                           <div className="flex justify-between border-b border-white/5 pb-2">
-                             <span className="text-nexus-muted uppercase">ROM Path</span>
-                             <span className="text-white break-all text-right max-w-[200px] text-[9px]">{game.relativePath || '—'}</span>
+                             <span className="text-nexus-muted uppercase">File_System</span>
+                             <span className="text-white">EXT4 / Encrypted</span>
                           </div>
                           <div className="flex justify-between border-b border-white/5 pb-2">
-                             <span className="text-nexus-muted uppercase">Developer</span>
-                             <span className="text-white">{game.metadata?.developer || '—'}</span>
+                             <span className="text-nexus-muted uppercase">BIOS_Linked</span>
+                             <span className="text-green-500">YES (SCPH-1001.BIN)</span>
                           </div>
                           <div className="flex justify-between border-b border-white/5 pb-2">
-                             <span className="text-nexus-muted uppercase">Publisher</span>
-                             <span className="text-white">{game.metadata?.publisher || '—'}</span>
-                          </div>
-                          <div className="flex justify-between border-b border-white/5 pb-2">
-                             <span className="text-nexus-muted uppercase">Release</span>
-                             <span className="text-white">{game.metadata?.releaseDate || '—'}</span>
-                          </div>
-                          <div className="flex justify-between">
-                             <span className="text-nexus-muted uppercase">Genre</span>
-                             <span className="text-white text-right">{game.metadata?.genre?.join(', ') || '—'}</span>
+                             <span className="text-nexus-muted uppercase">Mapper_ID</span>
+                             <span className="text-white">vRC6_TYPE_B</span>
                           </div>
                        </div>
                     </motion.div>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { HardDrive, Cloud, ArrowRightLeft, CheckCircle2, AlertCircle, RefreshCw, Database, Terminal, ShieldCheck, History } from 'lucide-react';
 
@@ -11,74 +11,36 @@ interface SyncEvent {
 
 export const SyncEngine: React.FC = () => {
   const [isSyncing, setIsSyncing] = useState(false);
-  const [logs, setLogs] = useState<SyncEvent[]>([]);
-  const [healthStatus, setHealthStatus] = useState<'connected' | 'disconnected' | 'checking'>('checking');
-  const esRef = useRef<EventSource | null>(null);
-
-  // Subscribe to server SSE for real daemon logs
-  useEffect(() => {
-    fetch('/api/health')
-      .then(r => r.json())
-      .then(data => setHealthStatus(data.database === 'connected' ? 'connected' : 'disconnected'))
-      .catch(() => setHealthStatus('disconnected'));
-
-    // Bridge daemon SSE into sync log format
-    const es = new EventSource('/api/daemon/stream');
-    esRef.current = es;
-    es.onmessage = (e) => {
-      const entry = JSON.parse(e.data);
-      if (entry.level) {
-        const newLog: SyncEvent = {
-          id: Math.random().toString(36).slice(2),
-          timestamp: new Date(entry.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-          message: `[${entry.source}] ${entry.message}`,
-          status: entry.level === 'ERROR' ? 'warning' : entry.level === 'WARN' ? 'warning' : entry.level === 'INFO' && entry.message.includes('complete') ? 'success' : 'info',
-        };
-        setLogs(prev => [newLog, ...prev.slice(0, 15)]);
-      }
-    };
-    return () => es.close();
-  }, []);
+  const [logs, setLogs] = useState<SyncEvent[]>([
+    { id: '1', timestamp: '14:20:05', message: 'Nexus Sync Engine Init...', status: 'info' },
+    { id: '2', timestamp: '14:20:06', message: 'AWS S3 Handshake: Verified', status: 'success' },
+    { id: '3', timestamp: '14:20:10', message: 'Scan complete: 4 local games identified', status: 'info' },
+  ]);
 
   const addLog = (message: string, status: 'info' | 'success' | 'warning' = 'info') => {
     const newLog: SyncEvent = {
-      id: Math.random().toString(36).slice(2),
+      id: Math.random().toString(36).substr(2, 9),
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
       message,
       status,
     };
-    setLogs(prev => [newLog, ...prev.slice(0, 15)]);
+    setLogs(prev => [newLog, ...prev.slice(0, 7)]);
   };
 
-  const handleForceSync = async () => {
+  const handleForceSync = () => {
     if (isSyncing) return;
     setIsSyncing(true);
-    addLog('Manual sync initiated', 'info');
-
-    try {
-      const res = await fetch('/api/health');
-      const data = await res.json();
-      if (data.database === 'connected') {
-        addLog('Neon PostgreSQL handshake: verified', 'success');
-        addLog('Scanning local vault for save state deltas...', 'info');
-        // Trigger a vault scan to refresh the DB
-        const scanRes = await fetch('/api/vault/scan', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
-        const scanData = await scanRes.json();
-        if (scanRes.ok) {
-          addLog(`Vault sync complete: ${scanData.scanned ?? 0} files checked`, 'success');
-        } else {
-          addLog(scanData.error ?? 'Vault scan skipped (no root path)', 'warning');
-        }
-      } else {
-        addLog('Database offline — sync deferred', 'warning');
-      }
-    } catch (e) {
-      addLog(`Sync error: ${e}`, 'warning');
-    } finally {
+    addLog('Manual sync initiated by user', 'info');
+    
+    setTimeout(() => addLog('Hashing local save directory...', 'info'), 1000);
+    setTimeout(() => addLog('Comparing CRC32 hashes with AWS state...', 'info'), 2500);
+    setTimeout(() => addLog('Delta detected: snes_metroid_v1.srm', 'warning'), 4000);
+    setTimeout(() => addLog('Pushing 24kb to Cloud Vault...', 'info'), 5500);
+    setTimeout(() => {
+      addLog('Push successful. States synchronized.', 'success');
       setIsSyncing(false);
-    }
+    }, 7000);
   };
-
 
   return (
     <div className="space-y-8 max-w-6xl animate-in fade-in slide-in-from-bottom-4 duration-700">

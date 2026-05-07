@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Search, Gamepad2, Laptop, Settings, Terminal, Command, Hash, X } from 'lucide-react';
-import { useGames } from '../hooks/useGames';
+import { MOCK_GAMES } from '../data/mockGames';
 
 interface CommandPaletteProps {
   isOpen: boolean;
@@ -11,7 +11,6 @@ interface CommandPaletteProps {
 
 export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose, onSelectGame }) => {
   const [query, setQuery] = useState('');
-  const { games } = useGames();
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -26,7 +25,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose,
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
 
-  const filteredGames = games.filter(g => 
+  const filteredGames = MOCK_GAMES.filter(g => 
     g.title.toLowerCase().includes(query.toLowerCase()) || 
     g.platform.toLowerCase().includes(query.toLowerCase())
   );
