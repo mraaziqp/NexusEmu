@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Layers, Smartphone, Monitor, Gamepad2, Maximize2, ShieldCheck, Box, Zap, Sparkles } from 'lucide-react';
-import { MOCK_GAMES } from '../data/mockGames';
+import { useGames } from '../hooks/useGames';
 
 export const SpatialView: React.FC = () => {
+  const { games } = useGames();
   const [activeIndex, setActiveIndex] = useState(2);
   const [isCasting, setIsCasting] = useState(false);
 
@@ -83,7 +84,7 @@ export const SpatialView: React.FC = () => {
         {/* 3D Carousel Simulation */}
         <div className="relative flex-1 flex items-center justify-center">
           <div className="relative w-full h-[500px] flex items-center justify-center">
-            {MOCK_GAMES.map((game, i) => {
+            {games.map((game, i) => {
               const distance = i - activeIndex;
               const absDistance = Math.abs(distance);
               if (absDistance > 2) return null;

@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { HardDrive, Archive, ArrowRightLeft, Zap, ShieldAlert, Cpu, Database, Save, ArrowDown, Activity } from 'lucide-react';
-import { MOCK_GAMES } from '../data/mockGames';
+import { useGames } from '../hooks/useGames';
 
 interface StorageItem {
   id: string;
@@ -12,16 +12,21 @@ interface StorageItem {
 }
 
 export const StorageTiering: React.FC = () => {
-  const [items, setItems] = useState<StorageItem[]>(
-    MOCK_GAMES.map((g, i) => ({
-      id: g.id,
-      title: g.title,
-      platform: g.platform,
-      size: (Math.random() * 2 + 0.5).toFixed(1) + ' GB',
-      tier: i < 4 ? 'hot' : 'cold'
-    }))
-  );
+  const { games } = useGames();
+  const [items, setItems] = useState<StorageItem[]>([]);
   const [smartCache, setSmartCache] = useState(true);
+
+  useEffect(() => {
+    if (games.length > 0) {
+      setItems(games.map((g, i) => ({
+        id: g.id,
+        title: g.title,
+        platform: g.platform,
+        size: (Math.random() * 2 + 0.5).toFixed(1) + ' GB',
+        tier: i < 4 ? 'hot' : 'cold',
+      })));
+    }
+  }, [games]);
 
   const moveItem = (id: string) => {
     setItems(items.map(item => 

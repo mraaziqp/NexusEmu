@@ -31,3 +31,36 @@
 .glass-panel {
   @apply bg-white/5 backdrop-blur-xl border border-white/10;
 }
+
+/* Controller / gamepad focus ring */
+[data-gpfocus] {
+  outline: 2px solid #3b82f6 !important;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.25) !important;
+}
+
+/* Generic focus ring for controller nav on non-library tabs */
+main button:focus-visible,
+main input:focus-visible,
+main textarea:focus-visible,
+main select:focus-visible,
+main a:focus-visible,
+main [tabindex]:focus-visible {
+  outline: 2px solid #3b82f6 !important;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.2) !important;
+  border-radius: 8px;
+}
+
+/* Controller hint badge (shown when gamepad is connected) */
+.gp-hint {
+  font-size: 10px;
+  font-family: var(--font-mono);
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 6px;
+  padding: 2px 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}

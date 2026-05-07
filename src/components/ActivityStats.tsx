@@ -1,9 +1,12 @@
 import React from 'react';
 import { motion } from 'motion/react';
 import { Clock, Smartphone, Gamepad2, Trophy, Flame, Calendar, TrendingUp, Monitor } from 'lucide-react';
-import { MOCK_GAMES } from '../data/mockGames';
+import { useGames } from '../hooks/useGames';
 
 export const ActivityStats: React.FC = () => {
+  const { games } = useGames();
+  const totalPlaytime = games.reduce((sum, g) => sum + (g.playtime ?? 0), 0);
+  const topGames = [...games].sort((a, b) => (b.playtime ?? 0) - (a.playtime ?? 0)).slice(0, 3);
   // Mock data for the heat map (contribution graph style)
   const days = Array.from({ length: 140 }, (_, i) => ({
     intensity: Math.floor(Math.random() * 5), // 0 to 4
@@ -41,7 +44,7 @@ export const ActivityStats: React.FC = () => {
                 <span className="text-[10px] font-bold text-nexus-muted uppercase">Global Total</span>
                 <span className="text-[10px] font-mono text-nexus-accent">RANK: ELITE</span>
               </div>
-              <p className="text-4xl font-black italic tracking-tighter">440.5 <span className="text-sm font-normal text-nexus-muted">H</span></p>
+              <p className="text-4xl font-black italic tracking-tighter">{(totalPlaytime / 60).toFixed(1)} <span className="text-sm font-normal text-nexus-muted">H</span></p>
             </div>
 
             <div className="space-y-4">
@@ -130,9 +133,9 @@ export const ActivityStats: React.FC = () => {
           <Gamepad2 className="w-3 h-3 text-nexus-accent" /> Active Objectives
         </h4>
         <div className="grid md:grid-cols-3 gap-6">
-          {MOCK_GAMES.slice(0, 3).map((game, i) => {
-            const hlbTime = 40; // Mock average completion time
-            const progress = (game.playtime / 60 / hlbTime) * 100;
+          {topGames.map((game, i) => {
+            const hlbTime = 40;
+            const progress = Math.min(100, (game.playtime / 60 / hlbTime) * 100);
             
             return (
               <motion.div 
@@ -147,7 +150,11 @@ export const ActivityStats: React.FC = () => {
                 </div>
                 
                 <div className="flex gap-4 mb-6 relative z-10">
-                  <img src={game.boxArt} className="w-12 h-16 rounded-lg object-cover shadow-2xl" />
+                  {game.boxArt ? (
+                    <img src={game.boxArt} className="w-12 h-16 rounded-lg object-cover shadow-2xl" />
+                  ) : (
+                    <div className="w-12 h-16 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-[8px] font-mono text-nexus-muted uppercase">{game.platform.slice(0,3)}</div>
+                  )}
                   <div className="space-y-1">
                     <p className="text-[10px] font-black text-nexus-accent uppercase tracking-widest">{game.platform}</p>
                     <h5 className="text-sm font-bold leading-tight line-clamp-1">{game.title}</h5>

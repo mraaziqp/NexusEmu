@@ -1,28 +1,41 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, Terminal, Book, Sparkles, Zap, Brain, History, MessageSquare, Info } from 'lucide-react';
+import { Search, Terminal, Book, Sparkles, Zap, Brain, History, MessageSquare, AlertCircle } from 'lucide-react';
 
 interface GuideProps {
   title: string;
+  platform?: string;
 }
 
-export const AIGameGuide: React.FC<GuideProps> = ({ title }) => {
+export const AIGameGuide: React.FC<GuideProps> = ({ title, platform = 'Unknown' }) => {
   const [query, setQuery] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [response, setResponse] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleAsk = (e: React.FormEvent) => {
+  const handleAsk = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!query) return;
+    if (!query.trim()) return;
     setIsTyping(true);
     setResponse(null);
-    
-    // Simulate Gemini response
-    setTimeout(() => {
+    setError(null);
+
+    try {
+      const res = await fetch('/api/ai/guide', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ game_title: title, platform, query: query.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`);
+      setResponse(data.response);
+    } catch (e) {
+      setError(String(e));
+    } finally {
       setIsTyping(false);
-      setResponse(`Based on archival data for ${title}, here is a strategic hint: Look for a hidden switch behind the waterfall in the second quadrant. Using the freeze blast will reveal a path to the Silver Key. Note: Speedrunners typically skip this by performing a clip-dash near the entrance.`);
-    }, 2000);
+    }
   };
+
 
   return (
     <div className="space-y-6 h-full flex flex-col p-2">
@@ -71,7 +84,12 @@ export const AIGameGuide: React.FC<GuideProps> = ({ title }) => {
                           className="flex items-center gap-2 text-nexus-accent"
                         >
                            <Brain className="w-4 h-4 animate-bounce" />
-                           <span className="animate-pulse">Synthesizing strategy...</span>
+                           <span className="animate-pulse">Synthesizing strategy from Gemini Core...</span>
+                        </motion.div>
+                     ) : error ? (
+                        <motion.div key="error" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-start gap-3 text-red-400">
+                           <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+                           <span className="text-xs leading-relaxed">{error}</span>
                         </motion.div>
                      ) : response ? (
                         <motion.div 
@@ -80,8 +98,8 @@ export const AIGameGuide: React.FC<GuideProps> = ({ title }) => {
                           animate={{ opacity: 1 }}
                           className="space-y-4"
                         >
-                           <p className="text-white/90 leading-relaxed indent-4">{response}</p>
-                           <p className="text-[10px] text-nexus-muted uppercase tracking-widest border-t border-white/5 pt-4">Nexus OS v2.0 - Consensus Derived</p>
+                           <p className="text-white/90 leading-relaxed whitespace-pre-wrap">{response}</p>
+                           <p className="text-[10px] text-nexus-muted uppercase tracking-widest border-t border-white/5 pt-4">Nexus AI — Powered by Gemini 2.0 Flash</p>
                         </motion.div>
                      ) : (
                         <div className="h-full flex flex-col items-center justify-center text-nexus-muted space-y-4 opacity-40">

@@ -17,7 +17,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
     { id: 'forge', icon: Hammer, label: 'Core forge' },
     { id: 'storage', icon: Database, label: 'Storage tiering' },
     { id: 'sync', icon: Cloud, label: 'Sync engine' },
-    { id: 'profile', icon: User, label: 'Systems & devices' },
+    { id: 'profile', icon: User, label: 'Profile & Devices' },
     { id: 'handheld', icon: Smartphone, label: 'Remote bridge' },
     { id: 'spatial', icon: Layers, label: 'Spatial VR' },
     { id: 'controller', icon: Gamepad2, label: 'Controller' },

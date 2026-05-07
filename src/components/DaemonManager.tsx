@@ -1,35 +1,47 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Cpu, Terminal, Play, RotateCcw, AlertCircle, CheckCircle2, ShieldCheck, Database, Cloud, Wifi } from 'lucide-react';
+import { Cpu, Terminal, RotateCcw, Database, Cloud, Wifi } from 'lucide-react';
+import { DaemonLog } from '../types';
+import { useTelemetry } from '../hooks/useTelemetry';
 
 export const DaemonManager: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpen, onClose }) => {
-  const [logs, setLogs] = useState<string[]>([
-    '[INFO] Nexus OS Daemon initialized',
-    '[INFO] Local Asset Server mounted at port 3000',
-    '[INFO] PostgreSQL instance link established',
-    '[WARN] Port 5353 (Discovery) is currently restricted by kernel'
-  ]);
+  const [logs, setLogs] = useState<DaemonLog[]>([]);
+  const logEndRef = useRef<HTMLDivElement>(null);
+  const { stats } = useTelemetry(2000);
 
-  const [services, setServices] = useState([
-    { id: 'fs', name: 'Tauri File Watcher', status: 'active', load: '1.2%' },
-    { id: 'db', name: 'PostgreSQL Instance', status: 'active', load: '4.5%' },
-    { id: 'sync', name: 'S3 Sync Engine', status: 'indexing', load: '12%' },
-    { id: 'assets', name: 'Local Asset Server', status: 'active', load: '0.8%' }
-  ]);
-
+  // Load historic logs
   useEffect(() => {
     if (!isOpen) return;
-    const interval = setInterval(() => {
-      const msgs = [
-        `[INFO] Scanned ${Math.floor(Math.random() * 50)} files in /roms/${['snes', 'n64', 'psx'][Math.floor(Math.random() * 3)]}`,
-        `[INFO] Background sync task complete (CRC32 verified)`,
-        `[WARN] Delta detected in slot ${Math.floor(Math.random() * 10)}`,
-        `[DEBUG] Memory page allocated at 0x${Math.random().toString(16).substr(2, 8).toUpperCase()}`
-      ];
-      setLogs(prev => [...prev.slice(-15), msgs[Math.floor(Math.random() * msgs.length)]]);
-    }, 2000);
-    return () => clearInterval(interval);
+    fetch('/api/daemon/logs')
+      .then(r => r.json())
+      .then((data: DaemonLog[]) => setLogs(data))
+      .catch(() => {});
   }, [isOpen]);
+
+  // SSE for real-time log streaming
+  useEffect(() => {
+    if (!isOpen) return;
+    const es = new EventSource('/api/daemon/stream');
+    es.onmessage = (e) => {
+      const entry = JSON.parse(e.data) as DaemonLog;
+      if (entry.level) {
+        setLogs(prev => [...prev.slice(-99), entry]);
+      }
+    };
+    return () => es.close();
+  }, [isOpen]);
+
+  // Auto-scroll to bottom
+  useEffect(() => {
+    logEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [logs]);
+
+  const services = [
+    { id: 'db',     name: 'Neon PostgreSQL',    status: 'active',   metric: `${stats.memory.usedPercent}% RAM` },
+    { id: 'ai',     name: 'Gemini AI Core',     status: 'active',   metric: 'gemini-2.0-flash' },
+    { id: 'cpu',    name: 'CPU Telemetry',       status: 'active',   metric: `${stats.cpu.load}% LOAD` },
+    { id: 'gpu',    name: 'GPU (RTX 3060 Ti)',   status: stats.gpu.available ? 'active' : 'indexing', metric: stats.gpu.available ? `${stats.gpu.load}%` : 'nvidia-smiâ€¦' },
+  ];
 
   if (!isOpen) return null;
 
@@ -60,7 +72,7 @@ export const DaemonManager: React.FC<{ isOpen: boolean; onClose: () => void }> =
                 <h3 className="text-sm font-black italic tracking-tight uppercase">Nexus Daemon Controller</h3>
                 <div className="flex items-center gap-2">
                    <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
-                   <span className="text-[10px] font-mono text-nexus-accent font-bold">SYSTEM_LEVEL: ROOT</span>
+                   <span className="text-[10px] font-mono text-nexus-accent font-bold">SYSTEM_LEVEL: ROOT Â· CPU {stats.cpu.load}%</span>
                 </div>
               </div>
             </div>
@@ -74,7 +86,7 @@ export const DaemonManager: React.FC<{ isOpen: boolean; onClose: () => void }> =
              <div className="p-6 space-y-4">
                 <div className="flex items-center justify-between px-1">
                    <h4 className="text-[10px] font-black uppercase tracking-widest text-nexus-muted">Microservice Registry</h4>
-                   <span className="text-[10px] font-mono text-nexus-muted">Nodes: 04</span>
+                   <span className="text-[10px] font-mono text-nexus-muted">Nodes: {services.length.toString().padStart(2, '0')}</span>
                 </div>
                 <div className="grid md:grid-cols-2 gap-3">
                    {services.map(s => (
@@ -83,15 +95,12 @@ export const DaemonManager: React.FC<{ isOpen: boolean; onClose: () => void }> =
                             <div className={`w-2 h-2 rounded-full ${
                                s.status === 'active' ? 'bg-green-500' :
                                s.status === 'indexing' ? 'bg-yellow-500 animate-pulse' : 'bg-red-500'
-                            }`} title={s.status} />
+                            }`} />
                             <div>
                                <p className="text-xs font-bold">{s.name}</p>
-                               <p className="text-[8px] font-mono text-nexus-muted uppercase">LOAD: {s.load}</p>
+                               <p className="text-[8px] font-mono text-nexus-muted uppercase">{s.metric}</p>
                             </div>
                          </div>
-                         <button className="p-2 opacity-0 group-hover:opacity-100 hover:text-nexus-accent transition-all">
-                            <RotateCcw className="w-3.5 h-3.5" />
-                         </button>
                       </div>
                    ))}
                 </div>
@@ -104,15 +113,22 @@ export const DaemonManager: React.FC<{ isOpen: boolean; onClose: () => void }> =
                 </div>
                 <div className="flex items-center gap-2 mb-4 text-nexus-muted">
                    <Terminal className="w-3 h-3" />
-                   <span className="uppercase tracking-widest font-black text-[9px]">Live Process Stream</span>
+                   <span className="uppercase tracking-widest font-black text-[9px]">Live Process Stream Â· SSE</span>
                 </div>
                 <div className="flex-1 overflow-y-auto no-scrollbar space-y-1.5 text-white/50">
-                   {logs.map((log, i) => (
-                      <p key={i} className={`flex gap-3 ${log.includes('[WARN]') ? 'text-yellow-500/80' : log.includes('[DEBUG]') ? 'text-blue-400/60' : ''}`}>
-                         <span className="opacity-30 shrink-0">{(i + 1).toString().padStart(3, '0')}</span>
-                         <span className="break-all">{log}</span>
+                   {logs.map((entry, i) => (
+                      <p key={i} className={`flex gap-3 ${
+                        entry.level === 'WARN'  ? 'text-yellow-500/80' :
+                        entry.level === 'ERROR' ? 'text-red-500/80' :
+                        entry.level === 'DEBUG' ? 'text-blue-400/60' : ''
+                      }`}>
+                         <span className="opacity-30 shrink-0">{new Date(entry.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
+                         <span className="shrink-0 font-bold">[{entry.level}]</span>
+                         <span className="shrink-0 text-nexus-accent/60">[{entry.source}]</span>
+                         <span className="break-all">{entry.message}</span>
                       </p>
                    ))}
+                   <div ref={logEndRef} />
                    <div className="w-2 h-4 bg-nexus-accent animate-pulse inline-block align-middle ml-2" />
                 </div>
              </div>
@@ -121,15 +137,15 @@ export const DaemonManager: React.FC<{ isOpen: boolean; onClose: () => void }> =
           <div className="p-4 bg-nexus-accent/10 border-t border-white/5 flex items-center justify-center gap-8">
              <div className="flex items-center gap-2">
                 <Database className="w-3 h-3 text-nexus-accent" />
-                <span className="text-[9px] font-mono font-bold">SQLITE_PERSISTENCE: ON</span>
+                <span className="text-[9px] font-mono font-bold">NEON_POSTGRES</span>
              </div>
              <div className="flex items-center gap-2">
                 <Cloud className="w-3 h-3 text-nexus-accent" />
-                <span className="text-[9px] font-mono font-bold">AWS_DELTA_ACTIVE</span>
+                <span className="text-[9px] font-mono font-bold">GEMINI_AI_ACTIVE</span>
              </div>
              <div className="flex items-center gap-2">
                 <Wifi className="w-3 h-3 text-nexus-accent" />
-                <span className="text-[9px] font-mono font-bold">LOCAL_HNDSHAKE: 100%</span>
+                <span className="text-[9px] font-mono font-bold">SSE_STREAM: LIVE</span>
              </div>
           </div>
         </motion.div>
