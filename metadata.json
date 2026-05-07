@@ -1,0 +1,6 @@
+{
+  "name": "Nexus Emu",
+  "description": "Next-gen AI-powered emulator frontend with console-like UI, cross-platform cloud sync, and intelligent metadata scraping.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["modern_ui", "ai_integration", "cloud_sync"]
+}
